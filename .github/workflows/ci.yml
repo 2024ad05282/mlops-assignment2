@@ -95,7 +95,7 @@ jobs:
             -t ${IMAGE_TAG}:latest \
             .
 
-       - name: Push Docker Image to GHCR
+      - name: Push Docker Image to GHCR
         if: github.event_name == 'push'
         run: |
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
