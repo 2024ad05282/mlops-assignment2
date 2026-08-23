@@ -1,0 +1,9 @@
+# ── Inference-only dependencies (CPU, for Docker container) ──
+# Lighter than full requirements.txt — no training/tracking libs
+torch==2.11.0
+torchvision==0.26.0
+fastapi==0.139.0
+uvicorn==0.37.0
+python-multipart==0.0.20
+Pillow==12.3.0
+numpy==2.5.0

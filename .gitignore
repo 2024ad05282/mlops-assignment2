@@ -1,0 +1,26 @@
+# ── Python ───────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# ── Data (tracked by DVC) ───────────────────────────────────
+PetImages/
+data/PetImages/
+
+# ── MLflow local DB & runs ──────────────────────────────────
+mlflow.db
+mlruns/
+
+# ── IDE ──────────────────────────────────────────────────────
+.vscode/
+.idea/
+
+# ── OS ───────────────────────────────────────────────────────
+Thumbs.db
+.DS_Store
+
+# ── Pytest cache ─────────────────────────────────────────────
+.pytest_cache/
+test-results.xml

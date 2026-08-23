@@ -1,0 +1,27 @@
+# Git & DVC
+.git
+.dvc
+.dvcignore
+.gitignore
+
+# Data (not needed for inference)
+data/
+PetImages/
+
+# Training artifacts
+plots/
+mlflow.db
+mlruns/
+__pycache__/
+*.pyc
+
+# Training script
+train.py
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
