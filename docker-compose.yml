@@ -7,7 +7,7 @@ version: '3.8'
 
 services:
   inference-service:
-    image: ghcr.io/2024ad05282/catdog-classifier:latest
+    image: ${IMAGE_TAG:-ghcr.io/2024ad05282/catdog-classifier:latest}
     container_name: catdog-inference-container
     ports:
       - "8000:8000"
