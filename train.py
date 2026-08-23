@@ -37,6 +37,8 @@ NUM_EPOCHS = 5
 LEARNING_RATE = 0.001
 IMAGE_SIZE = 128
 TRAIN_SPLIT = 0.8
+VAL_SPLIT = 0.1
+TEST_SPLIT = 0.1
 RANDOM_SEED = 42
 
 EXPERIMENT_NAME = "CatDog-CNN-Baseline"
@@ -307,6 +309,8 @@ def main():
             "learning_rate": LEARNING_RATE,
             "image_size": IMAGE_SIZE,
             "train_split": TRAIN_SPLIT,
+            "val_split": VAL_SPLIT,
+            "test_split": TEST_SPLIT,
             "optimizer": "Adam",
             "scheduler": "StepLR(step=3, gamma=0.5)",
             "device": str(device),
@@ -315,39 +319,57 @@ def main():
 
         # 1. Load dataset
         print(f"\n[1/6] Loading dataset from '{DATA_DIR}'...")
-        full_dataset = SafeImageFolder(DATA_DIR, transform=train_transform)
+        # Load dataset twice with different transforms for train vs val/test sets
+        train_dataset_full = SafeImageFolder(DATA_DIR, transform=train_transform)
+        val_dataset_full = SafeImageFolder(DATA_DIR, transform=val_transform)
 
-        class_names = full_dataset.classes
+        class_names = train_dataset_full.classes
         print(f"Classes: {class_names}")
-        print(f"Total images: {len(full_dataset)}")
+        print(f"Total images: {len(train_dataset_full)}")
 
         mlflow.log_params({
             "dataset_path": DATA_DIR,
             "num_classes": len(class_names),
-            "total_images": len(full_dataset),
+            "total_images": len(train_dataset_full),
         })
 
-        # 2. Split into train / val
-        print(f"\n[2/6] Splitting dataset (train: {TRAIN_SPLIT*100:.0f}%, val: {(1-TRAIN_SPLIT)*100:.0f}%)...")
+        # 2. Split into train / val / test (80% / 10% / 10%)
+        print(f"\n[2/6] Splitting dataset (train: {TRAIN_SPLIT*100:.0f}%, val: {VAL_SPLIT*100:.0f}%, test: {TEST_SPLIT*100:.0f}%)...")
+        
+        # Generate stable randomized indices
+        indices = list(range(len(train_dataset_full)))
         torch.manual_seed(RANDOM_SEED)
-        train_size = int(TRAIN_SPLIT * len(full_dataset))
-        val_size = len(full_dataset) - train_size
-        train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
+        import random
+        random.seed(RANDOM_SEED)
+        random.shuffle(indices)
 
-        # Override transform for validation set
-        val_dataset.dataset = SafeImageFolder(DATA_DIR, transform=val_transform)
+        train_size = int(TRAIN_SPLIT * len(train_dataset_full))
+        val_size = int(VAL_SPLIT * len(train_dataset_full))
+
+        train_indices = indices[:train_size]
+        val_indices = indices[train_size:train_size + val_size]
+        test_indices = indices[train_size + val_size:]
+
+        # Create Subset wrappers using respective loaded datasets
+        train_dataset = torch.utils.data.Subset(train_dataset_full, train_indices)
+        val_dataset = torch.utils.data.Subset(val_dataset_full, val_indices)
+        test_dataset = torch.utils.data.Subset(val_dataset_full, test_indices)
 
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE,
                                   shuffle=True, num_workers=2, pin_memory=True)
         val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE,
                                 shuffle=False, num_workers=2, pin_memory=True)
+        test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE,
+                                 shuffle=False, num_workers=2, pin_memory=True)
 
         print(f"Train samples: {len(train_dataset)}")
         print(f"Val samples:   {len(val_dataset)}")
+        print(f"Test samples:  {len(test_dataset)}")
 
         mlflow.log_params({
             "train_samples": len(train_dataset),
             "val_samples": len(val_dataset),
+            "test_samples": len(test_dataset),
         })
 
         # 3. Initialize model
@@ -429,13 +451,25 @@ def main():
         print(f"\nTraining complete in {total_time:.1f}s")
         print(f"Best Validation Accuracy: {best_val_acc:.2f}%")
 
-        # Log final metrics
+        # Evaluate on the hold-out Test Set
+        print("\nEvaluating best model on test set...")
+        best_checkpoint = torch.load(MODEL_PATH, map_location=device, weights_only=False)
+        model.load_state_dict(best_checkpoint["model_state_dict"])
+        
+        test_loss, test_acc, test_preds, test_labels = evaluate(
+            model, test_loader, criterion, device
+        )
+        print(f"Test Loss: {test_loss:.4f} | Test Accuracy: {test_acc:.2f}%")
+
+        # Log final metrics including test metrics
         mlflow.log_metrics({
             "best_val_accuracy": best_val_acc,
+            "test_loss": test_loss,
+            "test_accuracy": test_acc,
             "total_training_time_seconds": total_time,
         })
 
-        # 5. Generate and log plots/artifacts
+        # 5. Generate and log plots/artifacts using test set data
         print(f"\n[5/6] Generating plots and logging artifacts to MLflow...")
 
         # Loss & Accuracy curves
@@ -444,15 +478,15 @@ def main():
         )
         mlflow.log_artifact(loss_curve_path, "plots")
 
-        # Confusion matrix
+        # Confusion matrix on Test Set
         cm_path = plot_confusion_matrix(
-            best_val_labels, best_val_preds, class_names, PLOTS_DIR
+            test_labels, test_preds, class_names, PLOTS_DIR
         )
         mlflow.log_artifact(cm_path, "plots")
 
-        # Classification report
+        # Classification report on Test Set
         report = classification_report(
-            best_val_labels, best_val_preds,
+            test_labels, test_preds,
             target_names=class_names, output_dict=True
         )
         report_path = os.path.join(PLOTS_DIR, "classification_report.json")
@@ -460,18 +494,18 @@ def main():
             json.dump(report, f, indent=2)
         mlflow.log_artifact(report_path, "reports")
 
-        # Print classification report
-        print("\nClassification Report:")
+        # Print classification report on Test Set
+        print("\nClassification Report (Test Set):")
         print(classification_report(
-            best_val_labels, best_val_preds, target_names=class_names
+            test_labels, test_preds, target_names=class_names
         ))
 
-        # Log precision, recall, f1 per class
+        # Log precision, recall, f1 per class on Test Set
         for cls_name in class_names:
             mlflow.log_metrics({
-                f"{cls_name}_precision": report[cls_name]["precision"],
-                f"{cls_name}_recall": report[cls_name]["recall"],
-                f"{cls_name}_f1_score": report[cls_name]["f1-score"],
+                f"test_{cls_name}_precision": report[cls_name]["precision"],
+                f"test_{cls_name}_recall": report[cls_name]["recall"],
+                f"test_{cls_name}_f1_score": report[cls_name]["f1-score"],
             })
 
         # Log the trained model artifact
@@ -479,7 +513,7 @@ def main():
 
         # Log model with MLflow's PyTorch integration
         dummy_input = torch.randn(1, 3, IMAGE_SIZE, IMAGE_SIZE)
-        mlflow.pytorch.log_model(model, "pytorch_model", input_example=dummy_input)
+        mlflow.pytorch.log_model(model, "pytorch_model", input_example=dummy_input, serialization_format="pickle")
 
         # 6. Summary
         print(f"\n[6/6] Model saved to '{MODEL_PATH}'")
