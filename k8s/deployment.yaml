@@ -1,0 +1,56 @@
+# ============================================================
+# Kubernetes Deployment Manifest
+# MLOps Assignment 2 - CD Pipeline & Deployment (K8s)
+# ============================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catdog-classifier
+  labels:
+    app: catdog-classifier
+spec:
+  replicas: 2  # High-availability with 2 replicas
+  selector:
+    matchLabels:
+      app: catdog-classifier
+  template:
+    metadata:
+      labels:
+        app: catdog-classifier
+    spec:
+      containers:
+        - name: classifier
+          image: ghcr.io/2024ad05282/catdog-classifier:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: MODEL_PATH
+              value: "models/cat_dog_cnn.pt"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          # Liveness probe to check if the app is alive
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+          # Readiness probe to check if the model is loaded and ready to serve traffic
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5

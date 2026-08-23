@@ -1,0 +1,21 @@
+# ============================================================
+# Kubernetes Service Manifest
+# MLOps Assignment 2 - CD Pipeline & Deployment (K8s)
+# ============================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: catdog-classifier-service
+  labels:
+    app: catdog-classifier
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 8000
+      nodePort: 30080  # NodePort to access directly on local cluster
+      protocol: TCP
+      name: http
+  selector:
+    app: catdog-classifier

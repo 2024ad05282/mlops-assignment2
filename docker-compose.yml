@@ -1,0 +1,24 @@
+# ============================================================
+# Docker Compose Manifest
+# MLOps Assignment 2 - CD Pipeline & Deployment (Local/VM)
+# ============================================================
+
+version: '3.8'
+
+services:
+  inference-service:
+    image: ghcr.io/2024ad05282/catdog-classifier:latest
+    container_name: catdog-inference-container
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_PATH=models/cat_dog_cnn.pt
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
