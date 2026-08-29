@@ -111,18 +111,21 @@ jobs:
     runs-on: [self-hosted, windows]
     needs: build-ci
     if: github.event_name == 'push'  # Only deploy on push to main
+    permissions:
+      contents: read
+      packages: read
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Log in to GHCR
-        shell: pwsh
+        shell: powershell
         run: |
           docker login ghcr.io -u "${{ github.actor }}" -p "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Pull Latest Image from GHCR
-        shell: pwsh
+        shell: powershell
         run: |
           $owner = "${{ github.repository_owner }}".ToLower()
           $image = "ghcr.io/$owner/${{ env.DOCKER_IMAGE_NAME }}:latest"
@@ -130,7 +133,7 @@ jobs:
           docker pull $image
 
       - name: Stop & Remove Old Container (if running)
-        shell: pwsh
+        shell: powershell
         run: |
           # Stop old container if exists (ignore errors if not found)
           docker stop catdog-inference-container 2>$null
@@ -138,7 +141,7 @@ jobs:
           Write-Host "Old container cleaned up."
 
       - name: Deploy New Container
-        shell: pwsh
+        shell: powershell
         run: |
           $owner = "${{ github.repository_owner }}".ToLower()
           $image = "ghcr.io/$owner/${{ env.DOCKER_IMAGE_NAME }}:latest"
@@ -155,7 +158,7 @@ jobs:
           docker ps
 
       - name: Wait for Service to Start
-        shell: pwsh
+        shell: powershell
         run: |
           Write-Host "Waiting for service to become ready..."
           $maxRetries = 12
@@ -183,7 +186,7 @@ jobs:
           }
 
       - name: Smoke Test - Health Check
-        shell: pwsh
+        shell: powershell
         run: |
           Write-Host "=== SMOKE TEST: Health Check ==="
           $response = Invoke-WebRequest -Uri "http://localhost:8000/health" -UseBasicParsing
@@ -205,20 +208,14 @@ jobs:
           Write-Host "Health check PASSED!"
 
       - name: Smoke Test - Prediction
-        shell: pwsh
+        shell: powershell
         run: |
           Write-Host "=== SMOKE TEST: Prediction ==="
           
           # Create a test image using Python
-          python -c @"
-          from PIL import Image
-          import io, os
-          img = Image.new('RGB', (128, 128), color=(255, 100, 50))
-          img.save('test_smoke_image.jpg', format='JPEG')
-          print('Test image created.')
-          "@
+          python -c "from PIL import Image; img = Image.new('RGB', (128, 128), color=(255, 100, 50)); img.save('test_smoke_image.jpg', format='JPEG'); print('Test image created.')"
           
-          # Send prediction request using curl (more reliable for multipart)
+          # Send prediction request using curl
           $result = curl.exe -s -X POST "http://localhost:8000/predict" -F "file=@test_smoke_image.jpg;type=image/jpeg"
           $pred = $result | ConvertFrom-Json
           
@@ -236,7 +233,7 @@ jobs:
           Write-Host "Prediction test PASSED!"
 
       - name: Print Deployment Summary
-        shell: pwsh
+        shell: powershell
         if: success()
         run: |
           Write-Host ""
@@ -249,7 +246,7 @@ jobs:
           Write-Host "============================================="
 
       - name: Print Container Logs on Failure
-        shell: pwsh
+        shell: powershell
         if: failure()
         run: |
           Write-Host "=== CONTAINER LOGS ==="
