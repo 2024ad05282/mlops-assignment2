@@ -135,10 +135,14 @@ jobs:
 
       - name: Stop & Remove Old Container (if running)
         run: |
-          # Stop old container if exists (ignore errors if not found)
-          docker stop catdog-inference-container 2>$null
-          docker rm catdog-inference-container 2>$null
-          Write-Host "Old container cleaned up."
+          $existing = docker ps -a -q -f "name=catdog-inference-container"
+          if ($existing) {
+            Write-Host "Stopping and removing existing container..."
+            docker stop catdog-inference-container
+            docker rm catdog-inference-container
+          } else {
+            Write-Host "No existing container found. Ready to deploy fresh."
+          }
 
       - name: Deploy New Container
         run: |
@@ -244,4 +248,7 @@ jobs:
         if: failure()
         run: |
           Write-Host "=== CONTAINER LOGS ==="
-          docker logs catdog-inference-container
+          $existing = docker ps -a -q -f "name=catdog-inference-container"
+          if ($existing) {
+            docker logs catdog-inference-container
+          }
