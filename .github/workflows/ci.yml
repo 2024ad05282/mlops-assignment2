@@ -119,7 +119,7 @@ jobs:
       - name: Log in to GHCR
         shell: pwsh
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker login ghcr.io -u "${{ github.actor }}" -p "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Pull Latest Image from GHCR
         shell: pwsh
