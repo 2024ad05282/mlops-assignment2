@@ -133,7 +133,7 @@ class FeedbackRequest(BaseModel):
 
 app = FastAPI(
     title="Cat vs Dog MLOps Inference Service",
-    description="Containerized classifier service with logging, metrics, and drift monitoring.",
+    description="Containerized classifier CAT DOG service with logging, metrics, and drift monitoring.",
     version="1.1.0",
 )
 
