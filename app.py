@@ -283,8 +283,11 @@ async def submit_feedback(feedback: FeedbackRequest):
     Feedback loop endpoint.
     Accepts true labels for past predictions to track real-world performance.
     """
+    # Normalize true label value (e.g. "CAT" -> "Cat", "dog" -> "Dog")
+    normalized_label = feedback.true_label.strip().capitalize()
+
     # Validate true label value
-    if feedback.true_label not in ["Cat", "Dog"]:
+    if normalized_label not in ["Cat", "Dog"]:
         raise HTTPException(status_code=400, detail="true_label must be 'Cat' or 'Dog'.")
 
     # Verify if request_id exists in predictions.jsonl
@@ -306,13 +309,13 @@ async def submit_feedback(feedback: FeedbackRequest):
     # Save feedback record
     feedback_record = {
         "request_id": feedback.request_id,
-        "true_label": feedback.true_label,
+        "true_label": normalized_label,
         "timestamp": time.time()
     }
     with open(FEEDBACK_LOG_PATH, "a") as f:
         f.write(json.dumps(feedback_record) + "\n")
 
-    logger.info(f"Feedback logged for request {feedback.request_id} -> True Label: {feedback.true_label}")
+    logger.info(f"Feedback logged for request {feedback.request_id} -> True Label: {normalized_label}")
     return {"status": "success", "message": "Feedback submitted successfully."}
 
 

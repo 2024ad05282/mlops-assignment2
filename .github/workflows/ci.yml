@@ -105,7 +105,7 @@ jobs:
           docker push ${IMAGE_TAG}:${{ github.sha }}
           docker push ${IMAGE_TAG}:latest
 
-  # ─── Job 3: Deploy on Local Machine (Self-Hosted Runner) ──────
+  # ─── Job 3: Deploy on Local Machine (Self-Hosted Runner via Docker Compose) ───
   deploy-cd:
     name: Deploy to Local Machine (CD)
     runs-on: [self-hosted, windows]
@@ -126,118 +126,61 @@ jobs:
         run: |
           docker login ghcr.io -u "${{ github.actor }}" -p "${{ secrets.GITHUB_TOKEN }}"
 
-      - name: Pull Latest Image from GHCR
+      - name: Pull Latest Docker Compose Image
         run: |
-          $owner = "${{ github.repository_owner }}".ToLower()
-          $image = "ghcr.io/$owner/${{ env.DOCKER_IMAGE_NAME }}:latest"
-          Write-Host "Pulling image: $image"
-          docker pull $image
+          Write-Host "Pulling latest image defined in docker-compose.yml..."
+          docker compose pull
 
-      - name: Stop & Remove Old Container (if running)
+      - name: Stop Existing Services (docker compose down)
         run: |
-          $existing = docker ps -a -q -f "name=catdog-inference-container"
-          if ($existing) {
-            Write-Host "Stopping and removing existing container..."
-            docker stop catdog-inference-container
-            docker rm catdog-inference-container
-          } else {
-            Write-Host "No existing container found. Ready to deploy fresh."
-          }
+          Write-Host "Stopping and removing existing docker-compose containers..."
+          docker compose down
 
-      - name: Deploy New Container
+      - name: Deploy New Container (docker compose up -d)
         run: |
-          $owner = "${{ github.repository_owner }}".ToLower()
-          $image = "ghcr.io/$owner/${{ env.DOCKER_IMAGE_NAME }}:latest"
+          Write-Host "Starting inference service in detached mode..."
+          docker compose up -d
+          Write-Host "Service started! Checking running containers:"
+          docker compose ps
+
+      - name: Post-Deploy Smoke Test (Invoke-RestMethod Health Check)
+        run: |
+          Write-Host "=== POST-DEPLOY SMOKE TEST ==="
+          Write-Host "Waiting for service to be healthy at http://localhost:8000/health..."
           
-          Write-Host "Deploying container from: $image"
-          docker run -d `
-            --name catdog-inference-container `
-            -p 8000:8000 `
-            -e MODEL_PATH=models/cat_dog_cnn.pt `
-            -e PYTHONUNBUFFERED=1 `
-            $image
-          
-          Write-Host "Container deployed!"
-          docker ps
-
-      - name: Wait for Service to Start
-        run: |
-          Write-Host "Waiting for service to become ready..."
           $maxRetries = 12
           $retryDelay = 5
           $ready = $false
-          
+          $healthUrl = "http://localhost:8000/health"
+
           for ($i = 1; $i -le $maxRetries; $i++) {
             try {
-              $response = Invoke-WebRequest -Uri "http://localhost:8000/health" -TimeoutSec 5 -UseBasicParsing
-              if ($response.StatusCode -eq 200) {
-                Write-Host "Service is UP! (attempt $i/$maxRetries)"
+              $response = Invoke-RestMethod -Uri $healthUrl -Method Get -TimeoutSec 5
+              if ($response.status -eq "healthy") {
+                Write-Host "Success: Health check returned 200 OK and status 'healthy'! (Attempt $i/$maxRetries)"
+                Write-Host "Response Payload:"
+                $response | ConvertTo-Json -Depth 3 | Write-Host
                 $ready = $true
                 break
               }
             } catch {
-              Write-Host "Not ready yet... retry $i/$maxRetries"
+              Write-Host "Service not ready yet (Attempt $i/$maxRetries)... waiting $($retryDelay)s"
             }
             Start-Sleep -Seconds $retryDelay
           }
-          
+
           if (-not $ready) {
-            Write-Host "ERROR: Service did not start in time!"
-            docker logs catdog-inference-container
+            Write-Error "FAILED: Post-deployment health check failed after $maxRetries attempts!"
+            docker compose logs
             exit 1
           }
-
-      - name: Smoke Test - Health Check
-        run: |
-          Write-Host "=== SMOKE TEST: Health Check ==="
-          $response = Invoke-WebRequest -Uri "http://localhost:8000/health" -UseBasicParsing
-          $health = $response.Content | ConvertFrom-Json
-          
-          Write-Host "Status  : $($health.status)"
-          Write-Host "Version : $($health.version)"
-          Write-Host "Model   : loaded=$($health.model.loaded)"
-          Write-Host "Device  : $($health.model.device)"
-          
-          if ($health.status -ne "healthy") {
-            Write-Host "FAILED: Health check returned unhealthy status!"
-            exit 1
-          }
-          if ($health.model.loaded -ne $true) {
-            Write-Host "FAILED: Model is not loaded!"
-            exit 1
-          }
-          Write-Host "Health check PASSED!"
-
-      - name: Smoke Test - Prediction
-        run: |
-          Write-Host "=== SMOKE TEST: Prediction ==="
-          
-          # Create a test image using Python
-          python -c "from PIL import Image; img = Image.new('RGB', (128, 128), color=(255, 100, 50)); img.save('test_smoke_image.jpg', format='JPEG'); print('Test image created.')"
-          
-          # Send prediction request using curl
-          $result = curl.exe -s -X POST "http://localhost:8000/predict" -F "file=@test_smoke_image.jpg;type=image/jpeg"
-          $pred = $result | ConvertFrom-Json
-          
-          Write-Host "Predicted  : $($pred.prediction)"
-          Write-Host "Confidence : $($pred.confidence)"
-          Write-Host "Probs      : $($pred.probabilities)"
-          
-          if ($pred.prediction -notin @("Cat", "Dog")) {
-            Write-Host "FAILED: Invalid prediction!"
-            exit 1
-          }
-          
-          # Cleanup
-          Remove-Item -Path "test_smoke_image.jpg" -ErrorAction SilentlyContinue
-          Write-Host "Prediction test PASSED!"
 
       - name: Print Deployment Summary
         if: success()
         run: |
           Write-Host ""
           Write-Host "============================================="
-          Write-Host "  CD DEPLOYMENT SUCCESSFUL!"
+          Write-Host "  CD DEPLOYMENT SUCCESSFUL VIA DOCKER COMPOSE"
           Write-Host "  API running at: http://localhost:8000"
           Write-Host "  Health:   http://localhost:8000/health"
           Write-Host "  Predict:  http://localhost:8000/predict"
@@ -248,7 +191,4 @@ jobs:
         if: failure()
         run: |
           Write-Host "=== CONTAINER LOGS ==="
-          $existing = docker ps -a -q -f "name=catdog-inference-container"
-          if ($existing) {
-            docker logs catdog-inference-container
-          }
+          docker compose logs

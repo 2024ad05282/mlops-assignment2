@@ -11,6 +11,8 @@ services:
     container_name: catdog-inference-container
     ports:
       - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
     environment:
       - MODEL_PATH=models/cat_dog_cnn.pt
       - PYTHONDONTWRITEBYTECODE=1
