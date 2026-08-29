@@ -1,7 +1,26 @@
 """
 test_model.py - Unit Tests for Model Utility & Inference Functions
 ==================================================================
-Tests model architecture, forward pass, inference, and model loading.
+This test suite verifies the model architecture integrity, checkpoint loading,
+forward pass calculations, and end-to-end inference prediction capabilities.
+
+Main Test Categories & Verifications:
+1. Model Architecture (TestModelArchitecture):
+   - Component Check: Verifies that the model has distinct feature extraction and classifier parts.
+   - Output dimension: Confirms output dimensions match binary classification (2 classes: Cat vs Dog).
+   - Batch Handling: Checks that batches of inputs are processed correctly without shape mismatches.
+   - Parameter Count: Verifies parameter count is within reasonable limits.
+2. Model Forward Pass (TestForwardPass):
+   - Tensor Verification: Confirms forward pass returns PyTorch tensors.
+   - Calculation Integrity: Verifies outputs do not contain NaN values.
+   - Probabilities Check: Asserts Softmax outputs are in range [0, 1] and sum exactly to 1.
+   - Deterministic Evaluation: Ensures predictions are deterministic in eval mode (no dropout variation).
+3. Checkpoint Loading (TestModelLoading):
+   - File Loading: Checks that the PyTorch serialized weights (.pt file) load without crash.
+   - Metadata Integrity: Verifies key checkpoint metadata keys exist (epoch, class names, accuracy).
+   - Inference Validation: Checks that a re-created model from the checkpoint runs standard checks.
+4. End-to-End Prediction (TestEndToEndInference):
+   - Complete Inference Loop: Verifies inputting a PIL image, applying transformations, loading the model, running forward pass, and outputting valid classification labels ("Cat"/"Dog") and valid confidence scores.
 """
 
 import os

@@ -1,7 +1,22 @@
 """
 test_preprocessing.py - Unit Tests for Data Pre-processing Functions
 ====================================================================
-Tests image transforms, data loading, and preprocessing pipeline.
+This test suite verifies the robustness of the data loading and image
+preprocessing pipelines.
+
+Main Test Categories & Verifications:
+1. Training Transforms (TestTrainTransform):
+   - Output Tensor Check: Verifies that training transforms output a PyTorch tensor.
+   - Resizing Integrity: Confirms inputs are correctly resized to 128x128.
+   - Dynamic Range: Ensures pixel values are normalized within expected float bounds.
+2. Validation/Inference Transforms (TestValTransform):
+   - Deterministic Processing: Verifies preprocessing has no random augmentations.
+   - Shape Consistency: Ensures training and validation pipelines produce identical dimensions.
+3. Image Loading & Robustness (TestImageLoading):
+   - Valid Images: Ensures standard JPEGs load without error.
+   - Corrupt Files: Asserts exceptions are raised when trying to load corrupted file bytes.
+   - Empty Files: Checks that 0-byte files are correctly caught by file size validation.
+   - Grayscale/RGBA Handling: Verifies channel dimensions convert correctly to 3-channel RGB.
 """
 
 import os

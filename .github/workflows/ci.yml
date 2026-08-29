@@ -1,11 +1,12 @@
 # ============================================================
-# GitHub Actions CI Pipeline
-# MLOps Assignment 2 - CI for Build, Test & Image Creation
+# GitHub Actions CI/CD Pipeline
+# MLOps Assignment 2 - CI Build + CD via Self-Hosted Runner
 # ============================================================
-# Triggers on every push and pull request.
-# Steps: Checkout -> Install Deps -> Run Tests -> Build Docker Image
+# Job 1 (test):      Run unit tests on ubuntu-latest
+# Job 2 (build-ci):  Build & push Docker image to GHCR (ubuntu-latest)
+# Job 3 (deploy-cd): Pull & deploy on local machine (self-hosted Windows)
 
-name: CI Pipeline - Build, Test & Docker
+name: CI/CD Pipeline - Build, Test, Deploy
 
 on:
   push:
@@ -61,8 +62,8 @@ jobs:
           name: test-results
           path: test-results.xml
 
-  # ─── Job 2: Build & Publish Docker Image ──────────────────────
-  build:
+  # ─── Job 2: Build & Publish Docker Image (Cloud) ──────────────
+  build-ci:
     name: Build & Publish Docker Image
     runs-on: ubuntu-latest
     needs: test  # Only build if tests pass
@@ -104,58 +105,152 @@ jobs:
           docker push ${IMAGE_TAG}:${{ github.sha }}
           docker push ${IMAGE_TAG}:latest
 
-  # ─── Job 3: Deploy & Smoke Test ─────────────────────────────
-  deploy:
-    name: Continuous Deployment & Smoke Test
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push'  # Only deploy on direct push/merge to master
+  # ─── Job 3: Deploy on Local Machine (Self-Hosted Runner) ──────
+  deploy-cd:
+    name: Deploy to Local Machine (CD)
+    runs-on: [self-hosted, windows]
+    needs: build-ci
+    if: github.event_name == 'push'  # Only deploy on push to main
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install dependencies
+      - name: Log in to GHCR
+        shell: pwsh
         run: |
-          python -m pip install --upgrade pip
-          pip install requests Pillow
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Deploy Service using Docker Compose
+      - name: Pull Latest Image from GHCR
+        shell: pwsh
         run: |
-          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          export IMAGE_TAG="ghcr.io/${OWNER}/${{ env.DOCKER_IMAGE_NAME }}:latest"
+          $owner = "${{ github.repository_owner }}".ToLower()
+          $image = "ghcr.io/$owner/${{ env.DOCKER_IMAGE_NAME }}:latest"
+          Write-Host "Pulling image: $image"
+          docker pull $image
+
+      - name: Stop & Remove Old Container (if running)
+        shell: pwsh
+        run: |
+          # Stop old container if exists (ignore errors if not found)
+          docker stop catdog-inference-container 2>$null
+          docker rm catdog-inference-container 2>$null
+          Write-Host "Old container cleaned up."
+
+      - name: Deploy New Container
+        shell: pwsh
+        run: |
+          $owner = "${{ github.repository_owner }}".ToLower()
+          $image = "ghcr.io/$owner/${{ env.DOCKER_IMAGE_NAME }}:latest"
           
-          # Pull the newly pushed image from GHCR
-          docker compose pull
+          Write-Host "Deploying container from: $image"
+          docker run -d `
+            --name catdog-inference-container `
+            -p 8000:8000 `
+            -e MODEL_PATH=models/cat_dog_cnn.pt `
+            -e PYTHONUNBUFFERED=1 `
+            $image
           
-          # Start the service
-          docker compose up -d
+          Write-Host "Container deployed!"
+          docker ps
 
-      - name: Run Smoke Tests
+      - name: Wait for Service to Start
+        shell: pwsh
         run: |
-          python smoke_test.py
-        env:
-          API_URL: "http://localhost:8000"
+          Write-Host "Waiting for service to become ready..."
+          $maxRetries = 12
+          $retryDelay = 5
+          $ready = $false
+          
+          for ($i = 1; $i -le $maxRetries; $i++) {
+            try {
+              $response = Invoke-WebRequest -Uri "http://localhost:8000/health" -TimeoutSec 5 -UseBasicParsing
+              if ($response.StatusCode -eq 200) {
+                Write-Host "Service is UP! (attempt $i/$maxRetries)"
+                $ready = $true
+                break
+              }
+            } catch {
+              Write-Host "Not ready yet... retry $i/$maxRetries"
+            }
+            Start-Sleep -Seconds $retryDelay
+          }
+          
+          if (-not $ready) {
+            Write-Host "ERROR: Service did not start in time!"
+            docker logs catdog-inference-container
+            exit 1
+          }
+
+      - name: Smoke Test - Health Check
+        shell: pwsh
+        run: |
+          Write-Host "=== SMOKE TEST: Health Check ==="
+          $response = Invoke-WebRequest -Uri "http://localhost:8000/health" -UseBasicParsing
+          $health = $response.Content | ConvertFrom-Json
+          
+          Write-Host "Status  : $($health.status)"
+          Write-Host "Version : $($health.version)"
+          Write-Host "Model   : loaded=$($health.model.loaded)"
+          Write-Host "Device  : $($health.model.device)"
+          
+          if ($health.status -ne "healthy") {
+            Write-Host "FAILED: Health check returned unhealthy status!"
+            exit 1
+          }
+          if ($health.model.loaded -ne $true) {
+            Write-Host "FAILED: Model is not loaded!"
+            exit 1
+          }
+          Write-Host "Health check PASSED!"
+
+      - name: Smoke Test - Prediction
+        shell: pwsh
+        run: |
+          Write-Host "=== SMOKE TEST: Prediction ==="
+          
+          # Create a test image using Python
+          python -c @"
+          from PIL import Image
+          import io, os
+          img = Image.new('RGB', (128, 128), color=(255, 100, 50))
+          img.save('test_smoke_image.jpg', format='JPEG')
+          print('Test image created.')
+          "@
+          
+          # Send prediction request using curl (more reliable for multipart)
+          $result = curl.exe -s -X POST "http://localhost:8000/predict" -F "file=@test_smoke_image.jpg;type=image/jpeg"
+          $pred = $result | ConvertFrom-Json
+          
+          Write-Host "Predicted  : $($pred.prediction)"
+          Write-Host "Confidence : $($pred.confidence)"
+          Write-Host "Probs      : $($pred.probabilities)"
+          
+          if ($pred.prediction -notin @("Cat", "Dog")) {
+            Write-Host "FAILED: Invalid prediction!"
+            exit 1
+          }
+          
+          # Cleanup
+          Remove-Item -Path "test_smoke_image.jpg" -ErrorAction SilentlyContinue
+          Write-Host "Prediction test PASSED!"
+
+      - name: Print Deployment Summary
+        shell: pwsh
+        if: success()
+        run: |
+          Write-Host ""
+          Write-Host "============================================="
+          Write-Host "  CD DEPLOYMENT SUCCESSFUL!"
+          Write-Host "  API running at: http://localhost:8000"
+          Write-Host "  Health:   http://localhost:8000/health"
+          Write-Host "  Predict:  http://localhost:8000/predict"
+          Write-Host "  Metrics:  http://localhost:8000/metrics"
+          Write-Host "============================================="
 
       - name: Print Container Logs on Failure
+        shell: pwsh
         if: failure()
         run: |
-          docker ps -a
+          Write-Host "=== CONTAINER LOGS ==="
           docker logs catdog-inference-container
-
-      - name: Tear Down Deployment
-        if: always()
-        run: |
-          docker compose down

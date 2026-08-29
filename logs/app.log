@@ -52,3 +52,66 @@
 2026-08-23 16:21:07,403 [INFO] Feedback logged for request 66bc4065-cdc4-46a7-a229-0a27f43e6789 -> True Label: Cat
 2026-08-23 16:21:07,403 [INFO] HTTP POST /feedback | Status: 200 | Client: 127.0.0.1 | Latency: 0.0018s
 2026-08-23 16:21:07,497 [INFO] 1 change detected
+2026-08-23 17:40:35,635 [INFO] Model loaded successfully from 'models\cat_dog_cnn.pt'
+2026-08-23 17:40:35,637 [INFO] Using device: cuda
+2026-08-23 17:40:35,637 [INFO] Checkpoint Validation Accuracy: 83.47%
+2026-08-23 17:40:45,217 [INFO] HTTP POST /predict | Status: 200 | Client: 127.0.0.1 | Latency: 0.2640s
+2026-08-23 17:40:45,295 [INFO] 1 change detected
+2026-08-23 17:40:47,252 [INFO] Feedback logged for request 26486288-5ea5-490c-a18e-f1b17630a4f2 -> True Label: Cat
+2026-08-23 17:40:47,253 [INFO] HTTP POST /feedback | Status: 200 | Client: 127.0.0.1 | Latency: 0.0127s
+2026-08-23 17:40:47,317 [INFO] 1 change detected
+2026-08-23 17:40:49,340 [INFO] HTTP POST /predict | Status: 200 | Client: 127.0.0.1 | Latency: 0.0143s
+2026-08-23 17:40:49,438 [INFO] 1 change detected
+2026-08-23 17:40:51,371 [INFO] Feedback logged for request 724343c4-7601-450f-8ce1-3ad62692a59a -> True Label: Dog
+2026-08-23 17:40:51,372 [INFO] HTTP POST /feedback | Status: 200 | Client: 127.0.0.1 | Latency: 0.0105s
+2026-08-23 17:40:51,454 [INFO] 1 change detected
+2026-08-23 17:40:53,450 [INFO] HTTP POST /predict | Status: 200 | Client: 127.0.0.1 | Latency: 0.0150s
+2026-08-23 17:40:53,532 [INFO] 1 change detected
+2026-08-23 17:40:55,534 [INFO] Feedback logged for request f686b4a5-eed1-4194-8dfe-53c3221fd642 -> True Label: Dog
+2026-08-23 17:40:55,535 [INFO] HTTP POST /feedback | Status: 200 | Client: 127.0.0.1 | Latency: 0.0088s
+2026-08-23 17:40:55,622 [INFO] 1 change detected
+2026-08-23 17:40:57,595 [INFO] HTTP POST /predict | Status: 200 | Client: 127.0.0.1 | Latency: 0.0135s
+2026-08-23 17:40:57,696 [INFO] 1 change detected
+2026-08-23 17:40:59,666 [INFO] Feedback logged for request 185f6438-da30-4049-a351-6710a076a4da -> True Label: Cat
+2026-08-23 17:40:59,667 [INFO] HTTP POST /feedback | Status: 200 | Client: 127.0.0.1 | Latency: 0.0093s
+2026-08-23 17:40:59,763 [INFO] 1 change detected
+2026-08-23 17:41:01,747 [INFO] HTTP POST /predict | Status: 200 | Client: 127.0.0.1 | Latency: 0.0146s
+2026-08-23 17:41:01,800 [INFO] 1 change detected
+2026-08-23 17:41:03,807 [INFO] Feedback logged for request 1e0a99ef-ecc4-4e91-8e99-91c3bf313d3e -> True Label: Cat
+2026-08-23 17:41:03,807 [INFO] HTTP POST /feedback | Status: 200 | Client: 127.0.0.1 | Latency: 0.0101s
+2026-08-23 17:41:03,876 [INFO] 1 change detected
+2026-08-23 17:41:05,885 [INFO] HTTP POST /predict | Status: 200 | Client: 127.0.0.1 | Latency: 0.0143s
+2026-08-23 17:41:05,947 [INFO] 1 change detected
+2026-08-23 17:41:07,969 [INFO] Feedback logged for request 5306f92a-8929-43c7-929b-01e2be72589f -> True Label: Cat
+2026-08-23 17:41:07,970 [INFO] HTTP POST /feedback | Status: 200 | Client: 127.0.0.1 | Latency: 0.0085s
+2026-08-23 17:41:08,026 [INFO] 1 change detected
+2026-08-23 17:41:10,056 [INFO] HTTP POST /predict | Status: 200 | Client: 127.0.0.1 | Latency: 0.0195s
+2026-08-23 17:41:10,148 [INFO] 1 change detected
+2026-08-23 17:41:12,120 [INFO] Feedback logged for request c801b3c1-38bc-40c2-9343-ce9ffb14497e -> True Label: Dog
+2026-08-23 17:41:12,120 [INFO] HTTP POST /feedback | Status: 200 | Client: 127.0.0.1 | Latency: 0.0081s
+2026-08-23 17:41:12,173 [INFO] 1 change detected
+2026-08-23 17:41:14,185 [INFO] HTTP POST /predict | Status: 200 | Client: 127.0.0.1 | Latency: 0.0139s
+2026-08-23 17:41:14,263 [INFO] 1 change detected
+2026-08-23 17:41:16,240 [INFO] Feedback logged for request 4fcec3a3-2d4a-4901-abed-900b18b247b9 -> True Label: Dog
+2026-08-23 17:41:16,240 [INFO] HTTP POST /feedback | Status: 200 | Client: 127.0.0.1 | Latency: 0.0082s
+2026-08-23 17:41:16,294 [INFO] 1 change detected
+2026-08-23 17:41:18,298 [INFO] HTTP POST /predict | Status: 200 | Client: 127.0.0.1 | Latency: 0.0138s
+2026-08-23 17:41:18,363 [INFO] 1 change detected
+2026-08-23 17:41:20,357 [INFO] Feedback logged for request 0b29fbf4-726a-410d-b3d8-1b721a8feec2 -> True Label: Dog
+2026-08-23 17:41:20,357 [INFO] HTTP POST /feedback | Status: 200 | Client: 127.0.0.1 | Latency: 0.0082s
+2026-08-23 17:41:20,444 [INFO] 1 change detected
+2026-08-23 17:41:22,414 [INFO] HTTP POST /predict | Status: 200 | Client: 127.0.0.1 | Latency: 0.0136s
+2026-08-23 17:41:22,514 [INFO] 1 change detected
+2026-08-23 17:41:24,503 [INFO] Feedback logged for request 9f181fb0-42a1-488e-a601-7c089c3f72e4 -> True Label: Cat
+2026-08-23 17:41:24,503 [INFO] HTTP POST /feedback | Status: 200 | Client: 127.0.0.1 | Latency: 0.0085s
+2026-08-23 17:41:24,591 [INFO] 1 change detected
+2026-08-23 17:42:06,012 [INFO] HTTP POST /predict | Status: 200 | Client: 127.0.0.1 | Latency: 0.6773s
+2026-08-23 17:42:06,080 [INFO] 1 change detected
+2026-08-23 17:48:59,796 [INFO] 1 change detected
+2026-08-23 17:53:59,368 [INFO] 3 changes detected
+2026-08-23 17:53:59,733 [INFO] 1 change detected
+2026-08-23 17:54:57,862 [INFO] 15 changes detected
+2026-08-23 17:54:58,330 [INFO] 3 changes detected
+2026-08-23 17:55:01,017 [INFO] 67 changes detected
+2026-08-23 17:55:02,233 [INFO] 1 change detected
+2026-08-23 17:56:39,067 [INFO] 6 changes detected
