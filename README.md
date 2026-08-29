@@ -1,5 +1,7 @@
 # End-to-End MLOps Pipeline: Cat vs Dog Classification
 
+Project Demo - https://drive.google.com/file/d/1PuaseXeGaxObtCLykdJCNaRi46NgXT65/view?usp=sharing
+
 Production-grade MLOps pipeline for binary image classification (Cat vs Dog) developed for a pet adoption platform. The project covers data tracking, baseline model training, experiment tracking with MLflow, containerized REST API inference with FastAPI, automated CI/CD using GitHub Actions and Docker Compose, post-deployment smoke testing, and continuous monitoring with a ground-truth feedback loop.
 
 ---
